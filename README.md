@@ -1,112 +1,198 @@
-# API de Usuários
-API REST para cadastro, autenticação e gerenciamento de usuários utilizando Fastify, Prisma, Zod, JWT e PostgreSQL.
+# Users Platform
 
-## Visão Geral
-- CRUD completo de usuários próprio.
-- Autenticação com JWT e hashing de senha com bcrypt.
-- Validação de entrada com Zod em todas as rotas.
-- Prisma ORM para acesso ao PostgreSQL.
-- Estrutura modular com plugins e organização por responsabilidade.
+Monorepo contendo:
 
-## Stack Principal
-| Ferramenta | Uso |
-| --- | --- |
-| Node.js 18+ | Runtime do servidor |
-| Fastify | Framework HTTP | 
-| @fastify/jwt | Gestão de tokens JWT |
-| Prisma ORM | Camada de acesso ao banco |
-| PostgreSQL | Banco de dados relacional |
-| Zod | Validação de esquemas |
-| TypeScript | Tipagem estática |
+- **API REST** construída com Fastify, Prisma, Zod e JWT para autenticação.
+- **Aplicação Web** em React + Vite que consome a API e oferece fluxo completo de cadastro, login e gestão do usuário.
 
-## Estrutura de Pastas
-```
-├── prisma/
-│   └── schema.prisma         # Modelo de dados
-├── src/
-│   ├── app.ts                # Instancia o servidor Fastify
-│   ├── server.ts             # Ponto de entrada
-│   ├── plugins/
-│   │   └── prisma.ts         # Plugin Fastify para Prisma
-│   ├── routes/
-│   │   ├── auth.ts           # Rotas de autenticação
-│   │   └── users.ts          # Rotas de CRUD de usuários
-│   ├── schemas/
-│   │   ├── auth.ts           # Schemas Zod para login
-│   │   └── user.ts           # Schemas Zod para usuário
-│   ├── types/
-│   │   └── fastify-jwt.d.ts  # Tipagem personalizada para JWT
-│   └── utils/
-│       └── env.ts            # Validação de variáveis de ambiente
-└── README.md
-```
+Use este guia para preparar o ambiente, executar os serviços e entender a arquitetura geral do projeto.
+
+---
+
+## Sumário
+
+1. [Visão geral](#visão-geral)
+2. [Stack principal](#stack-principal)
+3. [Pré-requisitos](#pré-requisitos)
+4. [Estrutura do repositório](#estrutura-do-repositório)
+5. [Configuração de variáveis de ambiente](#configuração-de-variáveis-de-ambiente)
+6. [Configuração da API](#configuração-da-api)
+7. [Configuração do frontend web](#configuração-do-frontend-web)
+8. [Fluxo de autenticação](#fluxo-de-autenticação)
+9. [Referência de rotas da API](#referência-de-rotas-da-api)
+10. [Scripts úteis](#scripts-úteis)
+11. [Boas práticas e dicas](#boas-práticas-e-dicas)
+12. [Próximos passos sugeridos](#próximos-passos-sugeridos)
+
+---
+
+## Visão geral
+
+A API expõe endpoints para registrar, autenticar e administrar usuários persistidos em um banco PostgreSQL. A aplicação web oferece interface moderna (Tailwind + componentes inspirados em ShadCN) com React Query e TanStack Router, garantindo navegação cliente-side, cache e atualizações em tempo real dos dados.
+
+---
+
+## Stack principal
+
+| Camada   | Tecnologias chave |
+|----------|-------------------|
+| API      | Fastify 5, Prisma ORM, PostgreSQL, Zod, JWT, bcrypt, @fastify/cors |
+| Frontend | React 18, Vite, TypeScript, TailwindCSS, TanStack Router & Query, jwt-decode |
+
+---
 
 ## Pré-requisitos
-- Node.js 18 ou superior
-- npm 9+ ou yarn
-- Banco PostgreSQL acessível
 
-## Configuração do Ambiente
-1. Instale as dependências:
-```bash
-npm install
- ```
-2. Configure as variáveis de ambiente criando um arquivo `.env` baseado em `.env` fornecido.
+- **Node.js** 18+
+- **npm** 9+ (ou adapte para pnpm/yarn, se preferir)
+- **PostgreSQL** em execução (local ou hospedado)
 
-### Variáveis de Ambiente
+---
 
-| Variável | Descrição | Exemplo |
-| --- | --- | --- |
-| `DATABASE_URL` | String de conexão PostgreSQL | `postgresql://usuario:senha@localhost:5432/users_db?schema=public` |
-| `JWT_SECRET` | Segredo utilizado para assinar tokens JWT | `minha-chave-super-secreta` |
-| `BCRYPT_SALT_ROUNDS` | Custo do hashing de senhas | `10` |
-| `PORT` | Porta HTTP do servidor | `3333` |
+## Estrutura do repositório
 
-> Todas as variáveis são validadas em `src/utils/env.ts`; a inicialização falha se algo estiver incorreto.
-
-## Banco de Dados e Prisma
-
-1. Ajuste `DATABASE_URL` com suas credenciais.
-2. Gere o Prisma Client (apenas se alterar o schema):
-```bash
-npm run prisma:generate
-```
-3. Execute as migrações:
-```bash
-npm run prisma:migrate -- --name init
-```
-Isso cria a tabela `User` com os campos definidos em `prisma/schema.prisma`.
-
-## Executando a Aplicação
-- Ambiente de desenvolvimento (reload automático):
-```bash
-npm run dev
-```
-- Build e execução de produção:
-```bash
-npm run build
-npm start
+```text
+/
+├── api/                     # Código-fonte da API Fastify
+│   ├── prisma/              # schema.prisma e migrações
+│   ├── src/
+│   │   ├── plugins/         # plugin do Prisma
+│   │   ├── routes/          # auth.ts, users.ts
+│   │   ├── schemas/         # validações Zod
+│   │   ├── utils/           # carregamento/validação de env
+│   │   └── server.ts, app.ts
+│   └── package.json         # scripts/npm da API
+├── web/                     # Aplicação React
+│   ├── src/components/      # UI reutilizável (Tailwind + ShadCN)
+│   ├── src/features/        # Contexto de autenticação
+│   ├── src/lib/             # api-client, query-client, utils
+│   ├── src/routes/          # telas (login, register, users, profile, 404)
+│   └── package.json         # scripts/npm do frontend
+└── README.md                # Este documento
 ```
 
-O servidor inicia por padrão em `http://localhost:3333`.
+---
 
-## Fluxo de Autenticação
-1. **Cadastro (`POST /users`)**: cria um usuário e armazena a senha com hash.
-2. **Login (`POST /login`)**: valida credenciais e retorna um JWT.
-3. **Rotas protegidas**: exija `Authorization: Bearer <token>`; somente o próprio usuário pode ler, atualizar ou excluir seus dados.
+## Configuração de variáveis de ambiente
 
-## Endpoints
+### API (`/api`)
 
-| Método | Rota | Autenticação | Descrição |
-| --- | --- | --- | --- |
-| `POST` | `/users` | Não | Cria um novo usuário |
-| `POST` | `/login` | Não | Retorna JWT com `sub` = id do usuário |
-| `GET` | `/users` | Sim | Lista usuários ordenados por criação |
-| `GET` | `/users/:id` | Sim (mesmo usuário) | Detalhes do usuário autenticado |
-| `PUT` | `/users/:id` | Sim (mesmo usuário) | Atualiza dados do usuário |
-| `DELETE` | `/users/:id` | Sim (mesmo usuário) | Remove o usuário |
+1. Duplique o arquivo de exemplo:
+   ```bash
+   cd api
+   cp .env-example .env
+   ```
+2. Edite `.env` com os valores do seu ambiente:
 
-Respostas de erro seguem o formato `{ "message": string }` com códigos HTTP adequados (`401`, `403`, `404`, `409`, etc.).
+   | Variável             | Descrição                                                                 |
+   |----------------------|---------------------------------------------------------------------------|
+   | `DATABASE_URL`       | String de conexão PostgreSQL (inclua usuário, senha, host, porta e schema) |
+   | `JWT_SECRET`         | Texto aleatório usado para assinar tokens JWT                              |
+   | `BCRYPT_SALT_ROUNDS` | Número de rounds usados pelo `bcrypt` (recomendado >= 10)                  |
+   | `PORT` *(opcional)*  | Porta HTTP que a API deve escutar (padrão `3333`)                          |
+
+### Frontend (`/web`)
+
+1. Dentro da pasta `web`:
+   ```bash
+   cd web
+   cp .env.example .env
+   ```
+2. Ajuste `VITE_API_BASE_URL` se a API estiver em host/porta distintos. Exemplo para ambiente local:
+   ```env
+   VITE_API_BASE_URL=http://localhost:3333
+   ```
+---
+
+## Configuração da API
+
+1. Instale dependências:
+   ```bash
+   cd api
+   npm install
+   ```
+2. Gere o Prisma Client (opcional, mas recomendado após qualquer alteração em `schema.prisma`):
+   ```bash
+   npm run prisma:generate
+   ```
+3. Execute migrações (cria/atualiza as tabelas no banco configurado):
+   ```bash
+   npm run prisma:migrate
+   ```
+   > Dica: defina o nome da migração quando solicitado.
+4. Suba o servidor em modo desenvolvimento:
+   ```bash
+   npm run dev
+   ```
+   O Fastify iniciará (porta padrão `3333`). Logs detalhados ficam disponíveis no terminal.
+5. Para produção:
+   ```bash
+   npm run build   # Transpila TS para JS em dist/
+   npm start       # Executa dist/server.js
+   ```
+
+### O que a API faz
+
+- **Autenticação:** `/login` valida credenciais via Prisma e retorna JWT assinado com `@fastify/jwt`.
+- **Cadastro:** `/users` cria usuários com senha hasheada via `bcryptjs`.
+- **Proteção de rotas:** middleware `authenticate` verifica JWT e bloqueia acesso não autorizado.
+- **CORS:** `@fastify/cors` habilita chamadas do frontend durante o desenvolvimento.
+- **Validação:** Zod garante que payloads e parâmetros estejam corretos antes das operações.
+
+---
+
+## Configuração do frontend web
+
+1. Instale dependências:
+   ```bash
+   cd web
+   npm install
+   ```
+2. Inicie o servidor de desenvolvimento (Vite):
+   ```bash
+   npm run dev
+   ```
+   O projeto abrirá em `http://localhost:5173` (configure o Vite caso deseje outra porta).
+3. Scripts adicionais:
+   ```bash
+   npm run build    # Build de produção em web/dist
+   npm run preview  # Pré-visualiza o build estático
+   npm run lint     # Executa ESLint (TS + regras de React Hooks)
+   ```
+
+### Principais pontos do frontend
+
+- Contexto de autenticação (`src/features/auth`) persiste o token no `localStorage` e expõe helpers.
+- `TanStack Query` gerencia cache das requisições, com devtools ativas em ambiente de desenvolvimento.
+- `TanStack Router` cuida das rotas SPA (home -> redirecionamento, login, register, lista, perfil, 404).
+- Componentes base (`src/components/ui`) seguem a filosofia ShadCN, alimentados por Tailwind.
+- `api-client` centraliza chamadas HTTP (incluir token automaticamente, parse de erros e `fetch`).
+
+---
+
+## Fluxo de autenticação
+
+1. Usuário se registra ou faz login.
+2. API responde com token JWT (`POST /login`).
+3. Frontend armazena token e dados mínimos do usuário.
+4. Hooks de proteção (`useRequireAuth`) redirecionam usuários não autenticados para `/login`.
+5. Todas as chamadas autenticadas enviam `Authorization: Bearer <token>`.
+6. Logout limpa token, cache do React Query e volta para a tela de login.
+
+---
+
+## Referência de rotas da API
+
+| Método | Rota         | Autenticação | Descrição                                                                 |
+|--------|--------------|--------------|---------------------------------------------------------------------------|
+| POST   | `/login`     | ❌           | Recebe `{ email, password }`; retorna `{ token }`                         |
+| POST   | `/users`     | ❌           | Cria usuário: `{ name, email, password }`; retorna `{ user }`             |
+| GET    | `/users`     | ✅ JWT       | Lista usuários ordenados por criação decrescente                          |
+| GET    | `/users/:id` | ✅ JWT       | Retorna dados do próprio usuário (403 se tentar acessar outro id)        |
+| PUT    | `/users/:id` | ✅ JWT       | Atualiza nome/email/senha do próprio usuário (valida duplicidade de email) |
+| DELETE | `/users/:id` | ✅ JWT       | Exclui o usuário autenticado                                              |
+
+Respostas de erro seguem o padrão `{ message: string }` com HTTP status apropriado (401, 403, 404, 409, etc.).
 
 ## Guia de Rotas
 
@@ -262,16 +348,49 @@ curl -X DELETE http://localhost:3333/users/$USER_ID \
 
 **Resposta 204** (sem corpo)
 
-## Boas Práticas e Observações
-- Utilize um valor forte para `JWT_SECRET` em produção.
-- Ajuste `BCRYPT_SALT_ROUNDS` conforme a necessidade de segurança/performance.
-- Loga-se com Fastify usando `logger: true`; personalize conforme o ambiente.
-- Configurar HTTPS/proxy é responsabilidade da camada de infraestrutura.
+---
 
-## Próximos Passos Sugeridos
-- Criar testes automatizados (ex.: Vitest/Supertest) para validar rotas.
-- Implementar paginação/filtragem em `GET /users` conforme necessidade.
-- Adicionar rate limiting ou proteção contra brute force em `/login`.
+## Scripts úteis
 
-## Licença
-Projeto disponível para uso acadêmico ou pessoal. Ajuste conforme as necessidades.
+### API (`/api`)
+
+```bash
+npm run dev             # Modo desenvolvimento (ts-node-dev)
+npm run build           # Compila TypeScript para dist/
+npm start               # Roda versão compilada
+npm run prisma:generate # Gera Prisma Client
+npm run prisma:migrate  # Cria/aplica migrações interativamente
+```
+
+### Frontend (`/web`)
+
+```bash
+npm run dev      # Vite + React em HMR
+npm run build    # Build otimizado
+npm run preview  # Servidor para testar o build
+npm run lint     # ESLint com regras TS/React
+```
+
+---
+
+## Boas práticas e dicas
+
+- **Sincronização de portas:** garanta que `PORT` da API e `VITE_API_BASE_URL` estejam alinhados.
+- **CORS:** já habilitado na API, mas em produção configure o domínio explicitamente em `api/src/app.ts`.
+- **Atualização de schema:** após alterar `schema.prisma`, rode `npm run prisma:generate` e aplique uma nova migração.
+- **Logs:** Fastify registra requisições e erros no console, útil para depuração.
+- **Token inválido:** o backend responde 401; o frontend remove token persistido e redireciona para `/login`.
+- **Segurança:** armazene `JWT_SECRET` e `DATABASE_URL` em locais seguros (variáveis de ambiente do servidor).
+
+---
+
+## Próximos passos sugeridos
+
+1. **Automação de testes:** adicionar suíte (ex.: Vitest/Jest + Supertest na API; Testing Library no frontend).
+2. **CI/CD:** configurar pipeline para lint, testes e deploy automatizado.
+3. **Monitoramento:** instrumentar logs e métricas em produção.
+4. **FAQ/Guia do usuário:** expandir documentação do frontend para perfis de usuário finais.
+
+---
+
+Se encontrar dúvidas ou quiser contribuir, abra uma issue ou pull request com o contexto da alteração. Boas construções! 🚀
