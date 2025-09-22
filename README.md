@@ -1,4 +1,4 @@
-# Users Platform
+# Users App
 
 Monorepo contendo:
 
