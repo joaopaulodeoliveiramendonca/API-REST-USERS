@@ -108,9 +108,17 @@ O servidor inicia por padrão em `http://localhost:3333`.
 
 Respostas de erro seguem o formato `{ "message": string }` com códigos HTTP adequados (`401`, `403`, `404`, `409`, etc.).
 
-## Exemplos de Uso com `curl`
+## Guia de Rotas
 
-Cadastrar usuário:
+Todas as chamadas abaixo assumem que o servidor está em execução em `http://localhost:3333`.
+Para rotas protegidas, substitua `<JWT>` pelo token retornado em `/login` e `<USER_ID>` pelo ID do usuário autenticado.
+
+### Criar usuário
+
+- **Método:** `POST`
+- **URL:** `/users`
+- **Autenticação:** Não requer
+
 ```bash
 curl -X POST http://localhost:3333/users \
   -H "Content-Type: application/json" \
@@ -121,7 +129,25 @@ curl -X POST http://localhost:3333/users \
   }'
 ```
 
-Autenticar:
+**Resposta 201**
+```json
+{
+  "user": {
+    "id": "<USER_ID>",
+    "name": "Jane Doe",
+    "email": "jane@example.com",
+    "createdAt": "2024-01-01T12:00:00.000Z",
+    "updatedAt": "2024-01-01T12:00:00.000Z"
+  }
+}
+```
+
+### Autenticar usuário (login)
+
+- **Método:** `POST`
+- **URL:** `/login`
+- **Autenticação:** Não requer
+
 ```bash
 curl -X POST http://localhost:3333/login \
   -H "Content-Type: application/json" \
@@ -130,24 +156,111 @@ curl -X POST http://localhost:3333/login \
     "password": "senhaSegura"
   }'
 ```
-Resposta:
+
+**Resposta 200**
 ```json
-{ "token": "<jwt>" }
+{ "token": "<JWT>" }
 ```
 
-Listar usuários (requer JWT):
+Dica: armazene o token em uma variável para reutilizar nas demais rotas.
+```bash
+TOKEN=$(curl -s -X POST http://localhost:3333/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"jane@example.com","password":"senhaSegura"}' \
+  | jq -r '.token')
+```
+
+### Listar usuários
+
+- **Método:** `GET`
+- **URL:** `/users`
+- **Autenticação:** Requer
+
 ```bash
 curl http://localhost:3333/users \
-  -H "Authorization: Bearer <jwt>"
+  -H "Authorization: Bearer $TOKEN"
 ```
 
-Atualizar dados do próprio usuário:
-```bash
-curl -X PUT http://localhost:3333/users/<id> \
-  -H "Authorization: Bearer <jwt>" \
-  -H "Content-Type: application/json" \
-  -d '{ "name": "Jane Atualizada" }'
+**Resposta 200**
+```json
+{
+  "users": [
+    {
+      "id": "<USER_ID>",
+      "name": "Jane Doe",
+      "email": "jane@example.com",
+      "createdAt": "2024-01-01T12:00:00.000Z",
+      "updatedAt": "2024-01-01T12:00:00.000Z"
+    }
+  ]
+}
 ```
+
+### Consultar usuário por ID
+
+- **Método:** `GET`
+- **URL:** `/users/<USER_ID>`
+- **Autenticação:** Requer (apenas o próprio usuário)
+
+```bash
+curl http://localhost:3333/users/$USER_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Resposta 200**
+```json
+{
+  "user": {
+    "id": "<USER_ID>",
+    "name": "Jane Doe",
+    "email": "jane@example.com",
+    "createdAt": "2024-01-01T12:00:00.000Z",
+    "updatedAt": "2024-01-01T12:00:00.000Z"
+  }
+}
+```
+
+### Atualizar usuário
+
+- **Método:** `PUT`
+- **URL:** `/users/<USER_ID>`
+- **Autenticação:** Requer (apenas o próprio usuário)
+
+```bash
+curl -X PUT http://localhost:3333/users/$USER_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Jane Atualizada",
+    "password": "novaSenha"
+  }'
+```
+
+**Resposta 200**
+```json
+{
+  "user": {
+    "id": "<USER_ID>",
+    "name": "Jane Atualizada",
+    "email": "jane@example.com",
+    "createdAt": "2024-01-01T12:00:00.000Z",
+    "updatedAt": "2024-01-02T09:30:00.000Z"
+  }
+}
+```
+
+### Remover usuário
+
+- **Método:** `DELETE`
+- **URL:** `/users/<USER_ID>`
+- **Autenticação:** Requer (apenas o próprio usuário)
+
+```bash
+curl -X DELETE http://localhost:3333/users/$USER_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Resposta 204** (sem corpo)
 
 ## Boas Práticas e Observações
 - Utilize um valor forte para `JWT_SECRET` em produção.
